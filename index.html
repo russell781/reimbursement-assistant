@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>青禾报销助手 · 智能报销流程演示</title>
+<style>
+  :root{
+    --bg:#f6f8fb; --panel:#ffffff; --ink:#1e2a37; --sub:#6a7686; --line:#e9edf2;
+    --brand:#0f9d6b; --brand-d:#0a7d54; --brand-soft:#e7f7f0;
+    --blue:#2f6df0; --blue-soft:#eaf1ff; --violet:#7c5cf0; --violet-soft:#efeaff;
+    --amber:#e08a00; --amber-soft:#fdf2dd; --red:#e5484d; --red-soft:#fceaeb;
+    --ok:#15a05a; --ok-soft:#e6f6ec; --muted:#9aa6b2;
+    --shadow:0 6px 24px rgba(20,40,60,.07); --shadow-sm:0 2px 8px rgba(20,40,60,.06);
+    --r:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.65}
+  ::selection{background:var(--brand-soft)}
+  /* 顶栏 */
+  .appbar{background:linear-gradient(110deg,#0f9d6b,#13b07a 60%,#1ec28a);color:#fff;padding:14px 26px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:30;box-shadow:0 4px 18px rgba(15,157,107,.18)}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:.5px}
+  .logo .leaf{font-size:22px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.15))}
+  .appbar .sub{font-size:12px;opacity:.85;font-weight:400;margin-left:-6px}
+  .appbar .spacer{flex:1}
+  .seg{display:flex;background:rgba(255,255,255,.16);border-radius:30px;padding:4px;gap:2px}
+  .seg button{border:none;background:transparent;color:#fff;padding:7px 15px;border-radius:24px;cursor:pointer;font-size:13px;font-weight:600;transition:.2s;white-space:nowrap}
+  .seg button.active{background:#fff;color:var(--brand-d);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+  /* 流程时间轴 */
+  .flowbar{background:var(--panel);border-bottom:1px solid var(--line);padding:12px 26px;display:flex;align-items:center;gap:0;overflow-x:auto}
+  .flowbar .ft{display:flex;align-items:center;gap:8px;flex:1;min-width:fit-content}
+  .flowbar .node{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--sub);white-space:nowrap}
+  .flowbar .num{width:22px;height:22px;border-radius:50%;background:#eef2f6;color:#7b8794;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex:none}
+  .flowbar .node.on .num{background:var(--brand);color:#fff}
+  .flowbar .node.on{color:var(--brand-d);font-weight:700}
+  .flowbar .arrow{color:#cdd5dd;margin:0 6px;flex:none}
+  .flowbar .who{font-size:11px;background:#f1f4f8;color:#8a95a3;padding:1px 8px;border-radius:8px}
+  /* 布局 */
+  .layout{display:flex;min-height:calc(100vh - 116px)}
+  .side{width:212px;background:var(--panel);border-right:1px solid var(--line);padding:16px 0;flex:none}
+  .side .grp{font-size:11px;color:#aab3bd;letter-spacing:1px;padding:6px 22px 8px}
+  .nav{display:flex;align-items:center;gap:10px;padding:11px 22px;cursor:pointer;color:var(--sub);font-size:14px;border-left:3px solid transparent;transition:.15s}
+  .nav:hover{background:var(--brand-soft);color:var(--brand-d)}
+  .nav.active{background:var(--brand-soft);color:var(--brand-d);border-left-color:var(--brand);font-weight:700}
+  .nav .ic{font-size:16px;width:20px;text-align:center}
+  .main{flex:1;padding:26px 32px;overflow:auto;max-width:1180px}
+  .page{display:none}.page.active{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  h2{font-size:21px;margin-bottom:3px;letter-spacing:.3px}
+  .lead{color:var(--sub);margin-bottom:20px;font-size:13.5px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow-sm);margin-bottom:18px}
+  .card h3{font-size:15.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .grid{display:grid;gap:16px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+  label{display:block;font-size:12.5px;color:var(--sub);margin:12px 0 5px;font-weight:600}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;background:#fcfdfe;color:var(--ink);transition:.15s}
+  textarea{resize:vertical;min-height:66px}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px var(--brand-soft)}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:700;transition:.18s;font-family:inherit}
+  .btn-primary{background:var(--brand);color:#fff}.btn-primary:hover{background:var(--brand-d);transform:translateY(-1px);box-shadow:0 6px 16px rgba(15,157,107,.25)}
+  .btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{filter:brightness(1.05)}
+  .btn-violet{background:var(--violet);color:#fff}
+  .btn-ghost{background:#fff;border:1px solid var(--line);color:var(--sub)}.btn-ghost:hover{background:#f6f8fa}
+  .btn-danger{background:var(--red);color:#fff}
+  .btn-sm{padding:7px 13px;font-size:13px}
+  .btn[disabled]{opacity:.45;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+  /* 状态药丸 */
+  .pill{display:inline-block;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:700}
+  .p-draft{background:#eef2f6;color:#6b7785}.p-sub{background:var(--blue-soft);color:var(--blue)}
+  .p-mat{background:var(--amber-soft);color:var(--amber)}.p-biz{background:#def4ff;color:#0a83c4}
+  .p-fin{background:var(--violet-soft);color:var(--violet)}.p-pay{background:var(--ok-soft);color:var(--ok)}
+  .p-rej{background:var(--red-soft);color:var(--red)}
+  /* 表格 */
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line)}
+  th{color:var(--sub);font-weight:700;background:#fafbfc;font-size:12.5px}
+  tbody tr:hover{background:#fafcfe}
+  /* Hero */
+  .hero{background:linear-gradient(120deg,#0f9d6b,#1ec28a);border-radius:var(--r);padding:24px 26px;color:#fff;margin-bottom:18px;box-shadow:0 10px 30px rgba(15,157,107,.2)}
+  .hero h2{color:#fff;font-size:22px}.hero p{opacity:.92;margin-top:4px;font-size:13.5px}
+  .hero .chips{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .hero .chip{background:rgba(255,255,255,.18);padding:5px 12px;border-radius:20px;font-size:12.5px}
+  /* 步骤卡 */
+  .steps3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+  .stepc{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;cursor:pointer;transition:.18s;position:relative;overflow:hidden}
+  .stepc:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:#cfe9df}
+  .stepc .n{width:30px;height:30px;border-radius:9px;background:var(--brand-soft);color:var(--brand-d);display:flex;align-items:center;justify-content:center;font-weight:800;margin-bottom:10px}
+  .stepc h4{font-size:15px;margin-bottom:4px}
+  .stepc p{font-size:12.5px;color:var(--sub)}
+  .stepc .go{position:absolute;right:14px;bottom:14px;color:var(--brand);font-size:12px;font-weight:700;opacity:0;transition:.2s}
+  .stepc:hover .go{opacity:1}
+  /* 统计 */
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+  .stat .ic{position:absolute;right:14px;top:14px;font-size:26px;opacity:.12}
+  .stat .num{font-size:27px;font-weight:800;color:var(--brand-d)}
+  .stat .lbl{color:var(--sub);font-size:13px;margin-top:2px}
+  /* 聊天 */
+  .chat{height:380px;overflow:auto;border:1px solid var(--line);border-radius:14px;padding:16px;background:linear-gradient(180deg,#fbfdff,#f7faff);margin-bottom:14px}
+  .msg{max-width:82%;margin-bottom:14px}
+  .msg.me{margin-left:auto}
+  .bub{padding:11px 15px;border-radius:14px;font-size:14px;white-space:pre-wrap;line-height:1.6}
+  .msg.bot .who{color:var(--brand-d);font-weight:700;font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+  .msg.bot .who .av{width:18px;height:18px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px}
+  .msg.bot .bub{background:#fff;border:1px solid var(--line);border-top-left-radius:3px}
+  .msg.me .bub{background:linear-gradient(135deg,var(--brand),#15b07d);color:#fff;border-top-right-radius:3px}
+  .sug{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{background:var(--brand-soft);color:var(--brand-d);border:1px solid #cdeede;padding:6px 13px;border-radius:20px;cursor:pointer;font-size:12.5px;font-weight:600;transition:.15s}
+  .chip:hover{background:var(--brand);color:#fff}
+  /* 提示条 */
+  .alert{border-radius:12px;padding:13px 15px;margin-bottom:13px;font-size:13.5px;border:1px solid;line-height:1.6}
+  .a-ok{background:var(--ok-soft);border-color:#c2e9cf;color:#0c7a42}
+  .a-warn{background:var(--amber-soft);border-color:#f3d9a0;color:#9a5e00}
+  .a-danger{background:var(--red-soft);border-color:#f4c3c5;color:#b42329}
+  .a-info{background:var(--blue-soft);border-color:#c3d6fb;color:#1b4fd0}
+  /* 键值 */
+  .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+  .kv:last-child{border-bottom:none}
+  .kv .k{color:var(--sub)}.kv .v{font-weight:700;text-align:right}
+  .ai-tag{background:var(--violet-soft);color:var(--violet);font-size:11px;padding:1px 9px;border-radius:10px;font-weight:800;vertical-align:middle}
+  /* 步进器 */
+  .stepper{display:flex;gap:0;margin:16px 0;flex-wrap:wrap}
+  .step{flex:1;min-width:96px;text-align:center;position:relative;color:var(--sub);font-size:12px}
+  .step .dot{width:28px;height:28px;border-radius:50%;background:#e6eaf0;color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 7px;font-weight:800;font-size:13px}
+  .step.done .dot{background:var(--ok)}.step.cur .dot{background:var(--brand);box-shadow:0 0 0 5px var(--brand-soft)}
+  .step.cur{color:var(--brand-d);font-weight:800}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .mini{font-size:12px;color:var(--muted)}
+  .split{font-size:12.5px;color:var(--sub);font-weight:700;margin:16px 0 9px;display:flex;align-items:center;gap:8px}
+  .split:after{content:"";flex:1;height:1px;background:var(--line)}
+  .rule li{list-style:none;margin:7px 0;padding-left:20px;position:relative;font-size:13.5px}
+  .rule li:before{content:"✓";position:absolute;left:0;color:var(--brand);font-weight:800}
+  .auth-banner{background:linear-gradient(120deg,#eef4ff,#f3f8ff);border:1px solid #d4e2fb;border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;margin-bottom:16px}
+  .auth-banner .lock{font-size:26px}
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(10px);background:#1e2a37;color:#fff;padding:12px 22px;border-radius:26px;font-size:13.5px;z-index:99;opacity:0;transition:.25s;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .demo-tag{font-size:11px;background:rgba(255,255,255,.2);padding:2px 10px;border-radius:12px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="appbar">
+  <div class="logo"><span class="leaf">🌿</span> 青禾报销助手 <span class="sub">智能报销流程演示</span></div>
+  <div class="spacer"></div>
+  <span class="demo-tag">DEMO · 仅供流程演示</span>
+  <div class="seg" id="seg">
+    <button data-role="staff">👤 员工·小林</button>
+    <button data-role="admin">🗂 行政·乔姐</button>
+    <button data-role="fin">💰 财务·周敏</button>
+  </div>
+</div>
+
+<div class="flowbar" id="flowbar"></div>
+
+<div class="layout">
+  <div class="side" id="side"></div>
+  <div class="main" id="main"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =================== 数据层（localStorage） =================== */
+const KEY='qinghe_demo_v2';
+const today=()=>new Date().toISOString().slice(0,10);
+const uid=p=>p+'-'+String(Math.floor(1000+Math.random()*9000));
+function load(){const d=localStorage.getItem(KEY);return d?JSON.parse(d):seed();}
+function save(){localStorage.setItem(KEY,JSON.stringify(state));}
+function seed(){
+  const policy={
+    cities:{
+      '北京':{lv:'一线',hotel:500},'上海':{lv:'一线',hotel:500},'广州':{lv:'一线',hotel:500},
+      '深圳':{lv:'一线',hotel:500},'杭州':{lv:'二线',hotel:350},'成都':{lv:'二线',hotel:350},
+      '南京':{lv:'二线',hotel:350},'武汉':{lv:'二线',hotel:350},'西安':{lv:'三线',hotel:260},
+      '长沙':{lv:'三线',hotel:260},'郑州':{lv:'三线',hotel:260},
+    },
+    mealPerDay:90, big:5000, vpLine:2000,
+    rules:[
+      '发票抬头须为「青禾科技有限公司」，税号无误',
+      '差旅费须附行程单/车票，缺失视为材料不全',
+      '单张超标部分自费，需附说明并由部门负责人审批',
+      '招待费须事前提交《业务招待申请单》',
+      '收据、白条一律不予报销',
+    ],
+    faq:[
+      {k:['住宿','酒店','标准'],a:'【住宿标准】一线（北上广深）500元/晚，二线 350元/晚，三线 260元/晚。超标部分需附说明并由部门负责人审批。'},
+      {k:['餐补','餐饮','吃饭','补贴'],a:'【差旅餐补】90元/天，无需发票，按出差自然天数随差旅费发放。'},
+      {k:['交通','高铁','飞机','火车','打车'],a:'【交通】市内交通据实报销；城际优先高铁二等座；飞机需 OA 事前申请，未审批按高铁票价封顶。'},
+      {k:['发票','抬头','税号','开票'],a:'【发票】抬头须为「青禾科技有限公司」，普票/专票均可。收据、白条不予报销。'},
+      {k:['行程单','行程','机票'],a:'【行程单】差旅报销须附行程单/登机牌/车票，系统自动比对出行与发票日期，缺失将退回补正。'},
+      {k:['招待','客户','宴请','业务'],a:'【招待费】须事前提交《业务招待申请单》并经主管审批；单次超 2000 元须副总审批。'},
+      {k:['流程','进度','到账','多久'],a:'【报销流程】提交 → 材料审核 → 业务复核 → 财务复核 → 打款。单号可像快递一样随时查询。'},
+      {k:['时效','过期','期限'],a:'【报销时效】费用发生后 30 日内提交，跨月需附说明；逾期系统提示「超期」。'},
+      {k:['退回','驳回','不通过'],a:'【退回】材料不全/超标无说明/重复报销会被退回，原因会写明，补正后单号不变可重提。'},
+    ],
+  };
+  const bills=[
+    {id:'R-0001',owner:'小林',type:'差旅费',city:'北京',lv:'一线',amount:4280,invoices:6,itinerary:true,
+     status:'mat',createdAt:'2026-10-08',note:'赴北京客户现场支持3天',
+     ai:{score:92,verdict:'可提交',risks:[]},
+     log:[{t:'10-08 09:12',who:'小林',m:'提交报销单 R-0001（差旅·北京）'},
+          {t:'10-08 09:12',who:'青禾助手',m:'智能预审通过：金额≤住宿标准，材料齐全。'},
+          {t:'10-09 10:20',who:'周敏',m:'材料审核中（已转业务复核）'}]},
+  ];
+  return {policy,bills,chat:[],authLog:[],role:'staff',auth:false};
+}
+let state=load();
+
+/* =================== 智能预审引擎（自主判断） =================== */
+function preCheck(f){
+  const risks=[];let score=100;const c=state.policy.cities[f.city];
+  if(f.type==='差旅费'&&c){
+    const nights=Math.max(1,f.nights||1);const avg=f.amount/nights;
+    if(avg>c.hotel){risks.push(`住宿均价 ${avg.toFixed(0)}元/晚 超${c.lv}标准 ${c.hotel}元，需附说明`);score-=20;}
+  }
+  if(f.type==='差旅费'&&!f.itinerary){risks.push('差旅费缺失行程单/车票，材料不全');score-=25;}
+  if(f.type==='招待费'){
+    if(!f.hasApproval){risks.push('招待费缺《业务招待申请单》/事前审批');score-=20;}
+    if(f.amount>state.policy.vpLine&&!f.vpApproval){risks.push(`招待费超 ${state.policy.vpLine}元 缺副总审批`);score-=15;}
+  }
+  if(f.amount>state.policy.big){risks.push(`金额 ${f.amount}元 超大额阈值 ${state.policy.big}元，需额外复核`);score-=10;}
+  if((f.type==='差旅费'||f.type==='招待费')&&f.invoices<1){risks.push('未上传任何发票');score-=30;}
+  const dup=state.bills.find(b=>b.owner===f.owner&&b.city===f.city&&Math.abs(b.amount-f.amount)<1&&b.status!=='rej'&&Math.abs(new Date(b.createdAt)-new Date(f.createdAt))<7*864e5);
+  if(dup){risks.push(`疑似重复报销：与 ${dup.id} 高度相似`);score-=40;}
+  const age=(Date.now()-new Date(f.createdAt))/864e5;
+  if(age>30){risks.push('费用发生超 30 天，已超期需附说明');score-=10;}
+  let verdict=score>=85?'可提交':score>=55?'可提交（带风险提示）':'退回补正';
+  return {risks,score:Math.max(0,score),verdict};
+}
+
+/* =================== 工具 =================== */
+const ST={draft:{l:'草稿',c:'p-draft'},sub:{l:'已提交',c:'p-sub'},mat:{l:'材料审核中',c:'p-mat'},
+  biz:{l:'业务复核',c:'p-biz'},fin:{l:'财务复核',c:'p-fin'},pay:{l:'已打款',c:'p-pay'},rej:{l:'已退回',c:'p-rej'}};
+const pill=s=>`<span class="pill ${ST[s].c}">${ST[s].l}</span>`;
+const esc=s=>(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const money=n=>'¥'+Number(n).toLocaleString('zh-CN');
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function val(id){const e=document.getElementById(id);return e?e.value:''}
+function chk(id){const e=document.getElementById(id);return e?e.checked:false}
+function stamp(){const d=new Date(),p=n=>String(n).padStart(2,'0');return `${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`}
+
+/* =================== 流程时间轴 =================== */
+const FLOW=[
+  {t:'自助查制度',who:'小林',on:'staff'},
+  {t:'提交报销材料',who:'小林',on:'staff'},
+  {t:'经授权查状态',who:'小林',on:'staff'},
+  {t:'维护有效制度',who:'乔姐',on:'admin'},
+  {t:'核对业务事实',who:'周敏',on:'fin'},
+];
+function renderFlow(){
+  document.getElementById('flowbar').innerHTML='<div class="ft">'+FLOW.map((f,i)=>
+    `<div class="node ${state.role===f.on?'on':''}"><span class="num">${i+1}</span>${f.t}<span class="who">${f.who}</span></div>`+
+    (i<FLOW.length-1?'<span class="arrow">›</span>':'')).join('')+'</div>';
+}
+
+/* =================== 角色与导航 =================== */
+const NAV={
+  staff:[{id:'home',ic:'🏠',l:'演示首页'},{id:'ask',ic:'💬',l:'① 查有效制度'},{id:'new',ic:'📝',l:'② 提交材料'},{id:'mine',ic:'🔐',l:'③ 查本人状态'}],
+  admin:[{id:'home',ic:'🏠',l:'演示首页'},{id:'policy',ic:'🗂',l:'维护制度'},{id:'log',ic:'📊',l:'问答沉淀'}],
+  fin:[{id:'home',ic:'🏠',l:'演示首页'},{id:'queue',ic:'✅',l:'审核队列'},{id:'paid',ic:'💸',l:'打款记录'}],
+};
+let cur='home';
+function setRole(r){state.role=r;cur='home';save();syncRole();render();}
+function syncRole(){document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('active',b.dataset.role===state.role));}
+document.getElementById('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setRole(b.dataset.role);});
+
+function render(){
+  syncRole();renderFlow();
+  const sb=document.getElementById('side');
+  const roleName={staff:'员工端 · 小林',admin:'行政端 · 乔姐',fin:'财务端 · 周敏'}[state.role];
+  sb.innerHTML=`<div class="grp">${roleName}</div>`+NAV[state.role].map(n=>
+    `<div class="nav ${n.id===cur?'active':''}" data-p="${n.id}"><span class="ic">${n.ic}</span>${n.l}</div>`).join('');
+  sb.querySelectorAll('.nav').forEach(el=>el.onclick=()=>{cur=el.dataset.p;render();});
+  document.getElementById('main').innerHTML=({
+    staff:staffPages,admin:adminPages,fin:finPages}[state.role]())[cur]();
+  bind();
+}
+
+/* =================== 员工端 =================== */
+function staffPages(){
+  return {
+    home:()=>{
+      const mine=state.bills.filter(b=>b.owner==='小林');
+      const ing=mine.filter(b=>['sub','mat','biz','fin'].includes(b.status)).length;
+      return `<div class="hero">
+        <h2>👋 你好，小林</h2>
+        <p>青禾报销助手帮你三步走：先查制度、再交材料、最后授权查进度——不再反复打扰乔姐和周敏。</p>
+        <div class="chips"><span class="chip">📚 制度自助查</span><span class="chip">🤖 智能预审</span><span class="chip">📦 单号查进度</span></div>
+      </div>
+      <div class="steps3">
+        <div class="stepc" onclick="cur='ask';render()"><div class="n">1</div><h4>查有效制度</h4><p>自助问青禾助手，确认住宿/发票/招待规则</p><div class="go">去查询 →</div></div>
+        <div class="stepc" onclick="cur='new';render()"><div class="n">2</div><h4>提交材料</h4><p>按制度填单，系统实时预审风险</p><div class="go">去提交 →</div></div>
+        <div class="stepc" onclick="cur='mine';render()"><div class="n">3</div><h4>查本人状态</h4><p>经授权查询名下单据进度</p><div class="go">去查询 →</div></div>
+      </div>
+      <div class="grid g3">
+        <div class="stat"><div class="ic">📄</div><div class="num">${mine.length}</div><div class="lbl">我的单据</div></div>
+        <div class="stat"><div class="ic">⏳</div><div class="num">${ing}</div><div class="lbl">进行中</div></div>
+        <div class="stat"><div class="ic">💰</div><div class="num">${money(mine.reduce((s,b)=>s+(b.status==='pay'?b.amount:0),0))}</div><div class="lbl">已打款合计</div></div>
+      </div>`;
+    },
+    ask:()=>{
+      const sug=state.policy.faq.map((f,i)=>`<span class="chip" data-q="${i}">${f.k[0]}？</span>`).join('');
+      return `<h2>① 自助查询有效制度</h2><div class="lead">基于乔姐维护的最新有效制度自动应答，无需转人工。</div>
+      <div class="card">
+        <div class="sug">${sug}<span class="chip" data-q="reset">🔄 清空</span></div>
+        <div class="chat" id="chat">${state.chat.length?state.chat.map(renderMsg).join(''):'<div class="mini" style="text-align:center;margin-top:150px">点上方问题，或输入你的问题，例如「北京住宿标准是多少？」</div>'}</div>
+        <div class="row"><input id="qa" placeholder="问青禾助手…" onkeydown="if(event.key==='Enter')askQA()"/>
+          <button class="btn btn-primary" onclick="askQA()">发送</button></div>
+      </div>`;
+    },
+    new:()=>{
+      const cityOpts=Object.keys(state.policy.cities).map(c=>`<option ${c==='北京'?'selected':''}>${c}</option>`).join('');
+      return `<h2>② 提交报销材料</h2><div class="lead">按刚才查到的制度填写，系统会实时智能预审并给出风险分。</div>
+      <div class="card">
+        <div class="grid g2">
+          <div><label>报销类型</label><select id="f_type"><option>差旅费</option><option>招待费</option><option>办公用品</option><option>市内交通</option></select></div>
+          <div><label>发生城市</label><select id="f_city">${cityOpts}</select></div>
+          <div><label>报销金额（元）</label><input id="f_amount" type="number" value="3200" min="0"/></div>
+          <div><label>出差晚数（差旅费填）</label><input id="f_nights" type="number" value="3" min="1"/></div>
+          <div><label>发票张数</label><input id="f_inv" type="number" value="4" min="0"/></div>
+          <div><label>发生日期</label><input id="f_date" type="date" value="${today()}"/></div>
+        </div>
+        <label>事项说明</label><textarea id="f_note" placeholder="如：赴北京客户现场支持3天"></textarea>
+        <div class="split">材料与审批附件</div>
+        <div class="grid g3">
+          <label style="margin:0;font-weight:600"><input type="checkbox" id="f_iti" style="width:auto;margin-right:6px"/>附行程单/车票</label>
+          <label style="margin:0;font-weight:600"><input type="checkbox" id="f_appr" style="width:auto;margin-right:6px"/>有事前审批单</label>
+          <label style="margin:0;font-weight:600"><input type="checkbox" id="f_vp" style="width:auto;margin-right:6px"/>有副总审批（大额）</label>
+        </div>
+        <div class="split">实时智能预审 <span class="ai-tag">AI</span></div>
+        <div id="preResult"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn btn-primary" id="submitBtn" onclick="submitBill()">提交报销单</button>
+          <button class="btn btn-ghost" onclick="cur='home';render()">返回</button>
+        </div>
+      </div>`;
+    },
+    mine:()=>{
+      if(!state.auth){
+        return `<h2>③ 经授权查询本人单据状态</h2><div class="lead">根据内控要求，查询本人报销状态需先完成授权确认（仅限查询本人名下单据）。</div>
+        <div class="auth-banner">
+          <div class="lock">🔐</div>
+          <div style="flex:1">
+            <div style="font-weight:700;margin-bottom:3px">本人授权查询确认</div>
+            <div class="mini">我已登录员工账号「小林」，确认以本人身份查询名下报销单状态。系统将记录本次授权查询行为。</div>
+            <label style="margin:10px 0 0;font-weight:600;color:var(--ink)"><input type="checkbox" id="authChk" style="width:auto;margin-right:7px"/>我确认授权查询本人单据状态</label>
+          </div>
+          <button class="btn btn-primary" onclick="doAuth()">开始查询</button>
+        </div>
+        <div class="card"><h3>📌 授权说明</h3>
+          <ul class="rule">
+            <li>仅可查询本人（小林）名下单据，不可越权查询他人</li>
+            <li>每次查询需本人显式授权，操作留痕</li>
+            <li>制度维护由乔姐负责，业务事实核对由周敏负责</li>
+          </ul>
+        </div>`;
+      }
+      const mine=state.bills.filter(b=>b.owner==='小林');
+      return `<h2>③ 本人单据状态 <span class="ai-tag">已授权</span></h2><div class="lead">单号可像快递一样追踪进度。</div>
+      <div class="card"><table><thead><tr><th>单号</th><th>类型</th><th>城市</th><th>金额</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody>${mine.map(b=>`<tr><td><b>${b.id}</b></td><td>${b.type}</td><td>${b.city}</td><td>${money(b.amount)}</td><td>${pill(b.status)}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="viewBill('${b.id}')">追踪</button></td></tr>`).join('')||'<tr><td colspan="6" class="mini">暂无可查单据，先去「提交材料」</td></tr>'}</tbody></table>
+        <div class="row" style="margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="logoutAuth()">退出授权</button></div>
+      </div>`;
+    },
+  };
+}
+function renderMsg(m){
+  const me=m.who==='我';
+  return `<div class="msg ${me?'me':'bot'}">${me?'':`<div class="who"><span class="av">禾</span>青禾助手</div>`}
+    <div class="bub">${esc(m.text)}</div></div>`;
+}
+function askQA(){
+  const inp=document.getElementById('qa');if(!inp)return;const q=inp.value.trim();if(!q)return;
+  if(!state.chat.length)state.chat.push({who:'青禾助手',text:'你好，我是青禾报销助手，可帮你查差旅与报销制度～'});
+  state.chat.push({who:'我',text:q});
+  let ans='这个问题我还需要学习～可以问问：住宿标准、餐补、交通、发票、行程单、招待费、流程、时效、退回等。';
+  for(const f of state.policy.faq){if(f.k.some(k=>q.includes(k))){ans=f.a;break;}}
+  for(const city in state.policy.cities){
+    if(q.includes(city)&&(q.includes('住宿')||q.includes('标准')||q.includes('酒店'))){
+      const c=state.policy.cities[city];ans=`【${city}住宿标准】属${c.lv}城市，标准 ${money(c.hotel)}/晚。超标部分需附说明并由部门负责人审批。`;break;}
+  }
+  state.chat.push({who:'青禾助手',text:ans});inp.value='';save();
+  const box=document.getElementById('chat');box.innerHTML=state.chat.map(renderMsg).join('');box.scrollTop=box.scrollHeight;
+}
+function doAuth(){if(!chk('authChk')){toast('请先勾选授权确认');return;}state.auth=true;state.authLog.push({t:stamp(),who:'小林',m:'完成本人授权，查询名下单据状态'});save();render();}
+function logoutAuth(){state.auth=false;save();render();}
+function submitBill(){
+  const f={owner:'小林',type:val('f_type'),city:val('f_city'),amount:+val('f_amount')||0,nights:+val('f_nights')||1,
+    invoices:+val('f_inv')||0,createdAt:val('f_date'),note:val('f_note'),
+    itinerary:chk('f_iti'),hasApproval:chk('f_appr'),vpApproval:chk('f_vp')};
+  const ai=preCheck(f);
+  if(ai.verdict==='退回补正'&&!confirm(`智能预审：${ai.verdict}（${ai.score}分）\n风险：\n${ai.risks.join('\n')}\n\n仍要强制提交？`))return;
+  f.lv=state.policy.cities[f.city]?.lv||'—';f.id=uid('R');f.status='sub';f.ai=ai;
+  f.log=[{t:stamp(),who:'小林',m:`提交 ${f.id}（${f.type}·${f.city}）`},
+         {t:stamp(),who:'青禾助手',m:`智能预审：${ai.verdict}（${ai.score}分）`+(ai.risks.length?'\n'+ai.risks.join('\n'):'')}];
+  state.bills.unshift(f);save();toast(`已提交，单号 ${f.id}`);cur='mine';if(!state.auth)render();else render();
+}
+function livePre(){
+  const f={owner:'小林',type:val('f_type'),city:val('f_city'),amount:+val('f_amount')||0,nights:+val('f_nights')||1,
+    invoices:+val('f_inv')||0,createdAt:val('f_date'),itinerary:chk('f_iti'),hasApproval:chk('f_appr'),vpApproval:chk('f_vp')};
+  const ai=preCheck(f);const box=document.getElementById('preResult');if(!box)return;
+  const cls=ai.verdict==='退回补正'?'a-danger':ai.risks.length?'a-warn':'a-ok';
+  box.innerHTML=`<div class="alert ${cls}"><b>🤖 预审结论：${ai.verdict}（风险分 ${ai.score}/100）</b>
+    ${ai.risks.length?('<ul style="margin:6px 0 0 18px">'+ai.risks.map(r=>`<li>${esc(r)}</li>`).join('')+'</ul>'):'<div style="margin-top:4px">材料合规，可直接提交 ✅</div>'}</div>`;
+}
+function viewBill(id){
+  const b=state.bills.find(x=>x.id===id);if(!b)return;
+  const steps=['sub','mat','biz','fin','pay'];const idx=steps.indexOf(b.status);
+  const stepper=`<div class="stepper">${['已提交','材料审核','业务复核','财务复核','已打款'].map((s,i)=>
+    `<div class="step ${idx>=i?'done':''} ${idx===i?'cur':''}"><div class="dot">${i+1}</div>${s}</div>`).join('')}
+    ${b.status==='rej'?'<div class="step cur"><div class="dot">✕</div>已退回</div>':''}</div>`;
+  const ai=b.ai?`<div class="alert ${b.ai.verdict==='退回补正'?'a-danger':b.ai.risks.length?'a-warn':'a-ok'}">
+    <b>🤖 智能预审（${b.ai.score}分）</b>：${b.ai.verdict}
+    ${b.ai.risks.length?('<ul style="margin:6px 0 0 18px">'+b.ai.risks.map(r=>`<li>${esc(r)}</li>`).join('')+'</ul>'):''}</div>`:'';
+  document.getElementById('main').insertAdjacentHTML('afterbegin',
+    `<div class="card" style="border-color:var(--brand)">
+      <div class="row" style="justify-content:space-between"><h3 style="margin:0">📦 ${b.id} · 进度追踪</h3>${pill(b.status)}</div>
+      ${stepper}${ai}
+      <div class="grid g2">
+        <div><div class="kv"><span class="k">类型</span><span class="v">${b.type}</span></div>
+          <div class="kv"><span class="k">城市/等级</span><span class="v">${b.city}（${b.lv}）</span></div>
+          <div class="kv"><span class="k">金额</span><span class="v">${money(b.amount)}</span></div></div>
+        <div><div class="kv"><span class="k">发票张数</span><span class="v">${b.invoices}</span></div>
+          <div class="kv"><span class="k">行程单</span><span class="v">${b.itinerary?'已附':'未附'}</span></div>
+          <div class="kv"><span class="k">提交日期</span><span class="v">${b.createdAt}</span></div>
+          <div class="kv"><span class="k">说明</span><span class="v" style="font-weight:400">${esc(b.note||'—')}</span></div></div>
+      </div>
+      <div class="split">流转记录</div>
+      ${b.log.map(l=>`<div class="kv"><span class="k">${l.t} · ${l.who}</span><span class="v" style="font-weight:400;flex:1;text-align:left">${esc(l.m)}</span></div>`).join('')}
+      <button class="btn btn-ghost btn-sm" style="margin-top:14px" onclick="render()">← 返回</button>
+    </div>`);
+}
+
+/* =================== 行政端（乔姐） =================== */
+function adminPages(){
+  return {
+    home:()=>{
+      const bills=state.bills;const mat=bills.filter(b=>b.status==='mat').length;
+      return `<div class="hero" style="background:linear-gradient(120deg,#2f6df0,#4d86f5)">
+        <h2>🗂 你好，乔姐</h2><p>你是制度owner：维护有效制度，问答由助手代答，员工不再逐条来问你。</p></div>
+      <div class="grid g3">
+        <div class="stat"><div class="ic">📄</div><div class="num">${bills.length}</div><div class="lbl">全公司单据</div></div>
+        <div class="stat"><div class="ic">⏳</div><div class="num">${mat}</div><div class="lbl">待材料审核</div></div>
+        <div class="stat"><div class="ic">📚</div><div class="num">${state.policy.faq.length}</div><div class="lbl">制度问答条目</div></div>
+      </div>
+      <div class="card"><h3>📌 现行制度速览</h3>
+        <ul class="rule">
+          <li>一线 500 / 二线 350 / 三线 260 元·晚（住宿）</li>
+          <li>差旅餐补 ${money(state.policy.mealPerDay)}/天</li>
+          <li>大额阈值 ${money(state.policy.big)}，超需复核</li>
+          <li>招待费超 ${money(state.policy.vpLine)} 需副总审批</li>
+        </ul>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="cur='policy';render()">前往维护制度 →</button>
+      </div>`;
+    },
+    policy:()=>{
+      const cities=Object.entries(state.policy.cities);
+      return `<h2>维护有效制度</h2><div class="lead">修改后，员工端问答与智能预审将实时生效。</div>
+      <div class="card"><h3>城市住宿标准（元/晚）</h3>
+        <table><thead><tr><th>城市</th><th>等级</th><th>住宿标准</th><th></th></tr></thead><tbody id="ct">
+        ${cities.map(([c,v])=>`<tr><td>${c}</td><td>${v.lv}</td>
+          <td><input style="width:130px" type="number" value="${v.hotel}" data-c="${c}"/></td><td class="mini">改后保存</td></tr>`).join('')}</tbody></table>
+        <div class="split">其他参数</div>
+        <div class="grid g3">
+          <div><label>差旅餐补（元/天）</label><input id="p_meal" type="number" value="${state.policy.mealPerDay}"/></div>
+          <div><label>大额阈值（元）</label><input id="p_big" type="number" value="${state.policy.big}"/></div>
+          <div><label>招待副总审批线（元）</label><input id="p_vp" type="number" value="${state.policy.vpLine}"/></div>
+        </div>
+        <div class="split">发票规则（每行一条）</div>
+        <textarea id="p_rules">${state.policy.rules.join('\n')}</textarea>
+        <button class="btn btn-primary" style="margin-top:14px" onclick="savePolicy()">💾 保存制度</button>
+      </div>`;
+    },
+    log:()=>{
+      const logs=[{t:'10-09 09:05',who:'小林',q:'北京住宿标准？',a:'一线500元/晚'},{t:'10-09 09:40',who:'王磊',q:'招待费怎么报？',a:'需事前审批单，超2000副总批'},{t:'10-09 10:12',who:'小林',q:'行程单必须吗',a:'差旅须附行程单，缺失退回'}];
+      return `<h2>问答沉淀</h2><div class="lead">青禾助手代答沉淀，帮乔姐发现制度盲区、优化表述。</div>
+      <div class="card"><table><thead><tr><th>时间</th><th>员工</th><th>问题</th><th>助手答复</th></tr></thead>
+      <tbody>${logs.map(l=>`<tr><td class="mini">${l.t}</td><td>${l.who}</td><td>${l.q}</td><td>${l.a}</td></tr>`).join('')}</tbody></table>
+      <div class="alert a-info" style="margin-top:14px">💡 高频问题集中在「住宿标准」「招待费审批」，建议在制度中加粗提示。</div></div>`;
+    },
+  };
+}
+function savePolicy(){
+  document.querySelectorAll('#ct input').forEach(i=>{state.policy.cities[i.dataset.c].hotel=+i.value;});
+  state.policy.mealPerDay=+val('p_meal');state.policy.big=+val('p_big');state.policy.vpLine=+val('p_vp');
+  state.policy.rules=val('p_rules').split('\n').map(s=>s.trim()).filter(Boolean);save();toast('制度已保存，全端即时生效');
+}
+
+/* =================== 财务端（周敏） =================== */
+function finPages(){
+  const inQ=b=>['sub','mat','biz','fin'].includes(b.status);
+  return {
+    home:()=>{
+      const q=state.bills.filter(inQ);const risk=q.filter(b=>b.ai&&b.ai.score<85).length;
+      return `<div class="hero" style="background:linear-gradient(120deg,#7c5cf0,#9a7cf5)">
+        <h2>💰 你好，周敏</h2><p>你是业务事实最后一道关：系统已预审并标注风险，你只需确认与业务复核。</p></div>
+      <div class="grid g3">
+        <div class="stat"><div class="ic">📥</div><div class="num">${q.length}</div><div class="lbl">待处理单据</div></div>
+        <div class="stat"><div class="ic">⚠️</div><div class="num" style="color:var(--amber)">${risk}</div><div class="lbl">带风险提示</div></div>
+        <div class="stat"><div class="ic">✅</div><div class="num" style="color:var(--ok)">${state.bills.filter(b=>b.status==='pay').length}</div><div class="lbl">已打款</div></div>
+      </div>
+      <div class="card"><h3>⚡ 优先处理（高风险优先）</h3>
+        ${q.sort((a,b)=>(a.ai?.score||99)-(b.ai?.score||99)).slice(0,3).map(b=>`<div class="kv">
+          <span class="k">${b.id} · ${b.owner} · ${b.type} · ${money(b.amount)}</span>
+          <span class="v">${b.ai?`<span class="pill ${b.ai.score<55?'p-rej':b.ai.score<85?'p-mat':'p-sub'}">预审${b.ai.score}</span> `:''}${pill(b.status)}
+          <button class="btn btn-blue btn-sm" style="margin-left:8px" onclick="review('${b.id}')">审核</button></span></div>`).join('')||'<div class="mini">队列为空 🎉</div>'}
+      </div>`;
+    },
+    queue:()=>{
+      const q=state.bills.filter(inQ);
+      return `<h2>审核队列</h2><div class="lead">按风险分升序（风险高优先）。点「审核」看预审摘要 + 业务复核。</div>
+      <div class="card"><table><thead><tr><th>单号</th><th>申请人</th><th>类型</th><th>金额</th><th>预审</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody>${q.sort((a,b)=>(a.ai?.score||99)-(b.ai?.score||99)).map(b=>`<tr><td><b>${b.id}</b></td><td>${b.owner}</td><td>${b.type}</td><td>${money(b.amount)}</td>
+        <td>${b.ai?`<span class="pill ${b.ai.score<55?'p-rej':b.ai.score<85?'p-mat':'p-sub'}">${b.ai.score}分</span>`:'—'}</td>
+        <td>${pill(b.status)}</td><td><button class="btn btn-blue btn-sm" onclick="review('${b.id}')">审核</button></td></tr>`).join('')||'<tr><td colspan="7" class="mini">队列为空 🎉</td></tr>'}</tbody></table></div>`;
+    },
+    paid:()=>{
+      const paid=state.bills.filter(b=>b.status==='pay');
+      return `<h2>打款记录</h2><div class="lead">已完成报销单。</div>
+      <div class="card"><table><thead><tr><th>单号</th><th>申请人</th><th>类型</th><th>金额</th><th>状态</th></tr></thead>
+      <tbody>${paid.map(b=>`<tr><td><b>${b.id}</b></td><td>${b.owner}</td><td>${b.type}</td><td>${money(b.amount)}</td><td>${pill(b.status)}</td></tr>`).join('')||'<tr><td colspan="5" class="mini">暂无打款记录</td></tr>'}</tbody></table></div>`;
+    },
+  };
+}
+function review(id){
+  const b=state.bills.find(x=>x.id===id);if(!b)return;const ai=b.ai;
+  const aiBox=ai?`<div class="alert ${ai.verdict==='退回补正'?'a-danger':ai.risks.length?'a-warn':'a-ok'}">
+    <b>🤖 智能预审摘要（${ai.score}分 · ${ai.verdict}）</b>
+    ${ai.risks.length?('<ul style="margin:6px 0 0 18px">'+ai.risks.map(r=>`<li>${esc(r)}</li>`).join('')+'</ul>'):'<div style="margin-top:4px">未发现明显风险</div>'}</div>`:'';
+  const nx={sub:'mat',mat:'biz',biz:'fin',fin:'pay'};
+  const rejAble=['mat','biz','fin'].includes(b.status);
+  document.getElementById('main').insertAdjacentHTML('afterbegin',
+   `<div class="card" style="border-color:var(--blue)">
+     <div class="row" style="justify-content:space-between"><h3 style="margin:0">🔍 审核 ${b.id}</h3>${pill(b.status)}</div>
+     ${aiBox}
+     <div class="grid g2">
+       <div><div class="kv"><span class="k">申请人/类型</span><span class="v">${b.owner} · ${b.type}</span></div>
+         <div class="kv"><span class="k">城市/等级</span><span class="v">${b.city}（${b.lv}）</span></div>
+         <div class="kv"><span class="k">金额</span><span class="v">${money(b.amount)}</span></div></div>
+       <div><div class="kv"><span class="k">发票张数</span><span class="v">${b.invoices}</span></div>
+         <div class="kv"><span class="k">行程单</span><span class="v">${b.itinerary?'已附':'未附'}</span></div>
+         <div class="kv"><span class="k">说明</span><span class="v" style="font-weight:400">${esc(b.note||'—')}</span></div></div>
+     </div>
+     <div class="split">业务事实复核（周敏核对）</div>
+     <label style="margin:0 18px 0 0;font-weight:600"><input type="checkbox" id="bizOk" style="width:auto;margin-right:6px"/>已核对业务记录/合同</label>
+     <label style="margin:0;font-weight:600"><input type="checkbox" id="invOk" style="width:auto;margin-right:6px"/>发票真伪校验通过</label>
+     <div class="row" style="margin-top:16px">
+       <button class="btn btn-primary" onclick="advance('${b.id}')">✔ 确认通过 → ${ST[nx[b.status]]?ST[nx[b.status]].l:'完成'}</button>
+       ${rejAble?`<button class="btn btn-danger" onclick="reject('${b.id}')">✘ 退回补正</button>`:''}
+       <button class="btn btn-ghost" onclick="render()">返回</button>
+     </div>
+   </div>`);
+}
+function advance(id){
+  const b=state.bills.find(x=>x.id===id);if(!b)return;
+  if(!chk('bizOk')||!chk('invOk')){toast('请先勾选两项业务复核');return;}
+  const nx={sub:'mat',mat:'biz',biz:'fin',fin:'pay'};const next=nx[b.status];if(!next)return;
+  b.status=next;b.log.push({t:stamp(),who:'周敏',m:`业务复核通过，状态→${ST[next].l}`});
+  if(next==='pay')b.log.push({t:stamp(),who:'系统',m:`已打款 ${money(b.amount)} 至申请人工资卡`});
+  save();toast(`已推进：${ST[next].l}`);cur=b.status==='pay'?'paid':'queue';render();
+}
+function reject(id){
+  const b=state.bills.find(x=>x.id===id);if(!b)return;
+  const why=prompt('退回原因（将通知申请人）：','材料不全，请补充后重提');if(why===null)return;
+  b.status='rej';b.log.push({t:stamp(),who:'周敏',m:`退回：${why}`});save();toast('已退回');cur='queue';render();
+}
+
+/* =================== 绑定 =================== */
+function bind(){
+  document.querySelectorAll('.chip[data-q]').forEach(c=>c.onclick=()=>{
+    if(c.dataset.q==='reset'){state.chat=[];save();render();return;}
+    const f=state.policy.faq[+c.dataset.q];const i=document.getElementById('qa');if(i){i.value=f.k[0]+'？';askQA();}
+  });
+  ['f_type','f_city','f_amount','f_nights','f_inv','f_date','f_iti','f_appr','f_vp'].forEach(id=>{
+    const e=document.getElementById(id);if(e)e.addEventListener('input',livePre);
+  });
+  if(document.getElementById('preResult'))livePre();
+}
+
+/* =================== 启动 =================== */
+(function(){if(!state.role)state.role='staff';syncRole();render();})();
+</script>
+</body>
+</html>
